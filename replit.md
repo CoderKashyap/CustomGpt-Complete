@@ -10,12 +10,13 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Updates (November 2025)
 
-**Migrated to Simpler Chat Completions API** - Replaced complex Assistants API with streamlined approach:
-- Chat now uses OpenAI Chat Completions API with file_search tool (simpler, faster, more maintainable)
+**Migrated to OpenAI Responses API** - Replaced complex Assistants API with modern streamlined approach:
+- Chat now uses OpenAI Responses API with file_search tool (simpler, faster, more maintainable)
 - Removed dependency on OpenAI Threads and Runs (no more complex state management)
-- Conversation history stored in database as message array (full control over context)
-- Hybrid approach: Assistant API only for vector store management, Chat Completions for conversations
-- Same functionality, 50% less code, better performance
+- Conversation continuity via `previous_response_id` parameter (updated after each turn)
+- Citation extraction from nested response structure: `response.output → contentItem.text.annotations`
+- Hybrid approach: Assistant API only for vector store management, Responses API for conversations
+- Same RAG functionality with citations, 50% less code, better performance
 
 **Chat Real-Time Updates Fixed** - Resolved infinite loading issue in chat interface:
 - Frontend now handles both JSON and streaming responses from backend
@@ -101,7 +102,7 @@ Preferred communication style: Simple, everyday language.
 - `assistants`: AI assistant configurations with name, description, instructions, model, OpenAI assistant ID, OpenAI vector store ID, and active status
 - `uploaded_files`: PDF file metadata with OpenAI file ID and vector store file ID, belongs to one assistant via non-null `assistantId` foreign key with CASCADE delete
 - `user_assistant_access`: Junction table controlling which users can access which assistants
-- `chat_sessions`: User-owned conversation sessions with userId, assistantId, and threadId for OpenAI conversation continuity
+- `chat_sessions`: User-owned conversation sessions with userId, assistantId, and responseId for OpenAI Responses API conversation continuity
 - `chat_messages`: Conversation history with sessionId, role, content, and optional citation data stored as JSONB
 
 **Fallback Storage**: In-memory storage implementation (`MemStorage`) provides a development/testing alternative to PostgreSQL, storing all data in Map structures.
@@ -116,12 +117,12 @@ Preferred communication style: Simple, everyday language.
 ### External Dependencies
 
 **OpenAI Integration**: 
-- Assistant API for creating and managing custom AI assistants with specialized knowledge
+- Responses API for chat conversations with file_search tool and citation-backed answers
 - Vector Store API for document indexing and semantic search per assistant
 - File Search tool for retrieval-augmented generation (RAG) with citation support
-- Chat Completions via Assistant API with thread-based conversation management
+- Conversation continuity via previous_response_id parameter (updated after each turn)
+- Assistant API used only for vector store management (create, add files)
 - File API for document upload and management
-- Streaming responses supported for real-time chat experience
 - Lazy-loaded client initialization prevents startup errors when API key is not configured
 
 **Database**: 
@@ -149,14 +150,15 @@ Preferred communication style: Simple, everyday language.
 
 **Multi-Assistant Chat Architecture**:
 - Users can select from multiple AI assistants based on admin-granted access permissions
-- Each assistant has its own OpenAI Assistant API instance with custom instructions and knowledge base
-- Chat sessions optionally reference an assistantId to track which assistant was used
+- Each assistant has custom instructions and isolated knowledge base via dedicated vector store
+- Chat sessions reference assistantId and store responseId for conversation continuity
 - Session ownership verified before any session operations (read/write/delete)
-- Supports both streaming and non-streaming responses via OpenAI Assistant API
+- Uses OpenAI Responses API with `previous_response_id` for multi-turn conversations
 - Messages stored with sessionId, role (user/assistant/system), and optional citation metadata
+- Citations extracted from `response.output → contentItem.text.annotations` structure
 - Each assistant maintains its own Vector Store with attached files for specialized knowledge
-- Vector Store used for retrieval-augmented generation (RAG) to provide context-aware, citation-backed answers
-- Chat history persisted per-user for context and audit trail
+- Vector Store used for retrieval-augmented generation (RAG) via file_search tool
+- responseId updated after every turn to maintain conversation context
 - Assistant selector in UI allows users to choose which AI assistant to interact with
 
 **Type Safety Strategy**:
