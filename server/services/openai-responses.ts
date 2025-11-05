@@ -45,7 +45,8 @@ export async function chatWithFilesearch(
   }
 
   const requestBody: any = {
-    model: 'gpt-4o',
+    // model: 'gpt-4o',
+    model: 'gpt-5',
     input: userMessage,
     store: true,
   };

@@ -355,7 +355,7 @@ export function ChatInterface({ assistantId, isTestMode = false }: { assistantId
             </div>
             <div>
               <h3 className="font-semibold text-foreground">{currentSession?.title || "AI Analysis Assistant"}</h3>
-              <p className="text-xs text-muted-foreground">Powered by GPT-4.1 with File Search</p>
+              <p className="text-xs text-muted-foreground">Powered by GPT-5 with File Search</p>
             </div>
           </div>
           <div className="flex items-center space-x-2">

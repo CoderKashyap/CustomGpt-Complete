@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import type { Assistant } from "@shared/schema";
+// import type { Assistant } from "@shared/schema";
 import dotenv from 'dotenv';
 dotenv.config();
 

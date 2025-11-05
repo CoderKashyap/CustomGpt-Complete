@@ -3,7 +3,7 @@ import type { ChatMessage } from "@shared/schema";
 import fs from "fs";
 
 // const MODEL = "gpt-4o";
-const MODEL = "gpt-4.1";
+const MODEL = "gpt-5";
 
 import dotenv from 'dotenv';
 dotenv.config();
