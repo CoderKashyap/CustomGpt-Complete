@@ -2,206 +2,57 @@
 
 ## Overview
 
-AI Assistant Platform is a **multi-user** document analysis application with role-based access control. Admin users can create multiple custom AI assistants with unlimited PDF document uploads to build specialized knowledge bases. Regular users access the chat interface to interact with AI assistants that answer questions based on the uploaded documents with source citations. The system uses OpenAI's Assistant API and vector store for intelligent, citation-backed responses.
+The AI Assistant Platform is a multi-user document analysis application with role-based access control. It enables admin users to create custom AI assistants with unlimited PDF uploads, building specialized knowledge bases. Regular users interact with these AI assistants via a chat interface to get answers based on the uploaded documents, complete with source citations. The system leverages OpenAI's Assistant API and vector store for intelligent, citation-backed responses, and has been updated to use the OpenAI Responses API for streamlined conversations. The platform aims to provide a robust, scalable solution for creating and deploying specialized AI knowledge agents.
 
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
 
-## Recent Updates (November 2025)
-
-**Migrated to OpenAI Responses API** - Replaced complex Assistants API with modern streamlined approach:
-- Chat now uses OpenAI Responses API with file_search tool (simpler, faster, more maintainable)
-- Removed dependency on OpenAI Threads and Runs (no more complex state management)
-- Conversation continuity via `previous_response_id` parameter (updated after each turn)
-- Citation extraction from nested response structure: `response.output → contentItem.text.annotations`
-- Hybrid approach: Assistant API only for vector store management, Responses API for conversations
-- Same RAG functionality with citations, 50% less code, better performance
-
-**Chat Real-Time Updates Fixed** - Resolved infinite loading issue in chat interface:
-- Frontend now handles both JSON and streaming responses from backend
-- Cache invalidation triggers immediately after receiving response
-- Messages appear instantly without requiring page refresh
-- Improved UX with brief preview of assistant response before full display
-
-**Dynamic Per-Assistant Instructions Implemented** - Each assistant uses its own custom prompt:
-- Chat system uses each assistant's custom instructions from database
-- No hardcoded prompts - all prompts dynamically loaded from assistant configuration
-- Conversation context maintained via database-stored message history
-- Each assistant has isolated knowledge base via dedicated vector store
-
-**Per-Assistant File Isolation Implemented** - Complete file ownership refactor for isolated knowledge bases:
-- Removed centralized file pool - files now belong exclusively to one assistant
-- Direct file upload during assistant creation/editing via multipart form data
-- Database enforces file ownership: `uploadedFiles.assistantId` is a non-null foreign key with CASCADE delete
-- No junction table - one-to-many relationship (assistant → files) replaces many-to-many
-- Each file upload creates/updates assistant's dedicated vector store for RAG
-- Frontend shows file upload input per assistant, eliminating file selection from shared pool
-- Critical fixes: mutation cache invalidation uses mutation variables, file batches API for vector store uploads
-
-**Multi-Assistant Architecture Implemented** - Complete overhaul to support multiple custom AI assistants:
-- Admin users can create, configure, and manage multiple AI assistants with custom instructions and knowledge bases
-- Each assistant has its own OpenAI Assistant API instance with dedicated file attachments
-- User-assistant access control allows admins to grant/revoke user permissions per assistant
-- Assistant selector in chat interface lets users choose which AI assistant to use
-- Admin dashboard for user management, role assignment, and assistant access control
-- Dedicated assistant management page for creating/editing assistants and managing file attachments
-
-**Multi-User Authentication System Implemented** - Complete authentication and authorization system with:
-- User signup/login/logout using Passport.js and bcrypt password hashing
-- Role-based access control: "admin" and "user" roles
-- Session ownership verification preventing cross-user access
-- Security hardening: server-side role assignment only, admin promotion endpoint
-
 ## System Architecture
 
 ### Frontend Architecture
-
-**Framework**: React 18 with TypeScript, using Vite as the build tool and development server.
-
-**UI Component System**: Built on shadcn/ui with Radix UI primitives, providing a comprehensive set of accessible, pre-styled components using the "new-york" style variant with Tailwind CSS for styling.
-
-**State Management**: TanStack Query (React Query) handles all server state, data fetching, and cache management. No global client state management library is used - components rely on server state and local component state.
-
-**Routing**: Wouter provides lightweight client-side routing:
-- `/auth` - Public authentication page (signup/login)
-- `/dashboard` - Protected main dashboard with chat interface (requires authentication)
-- `/admin-dashboard` - Admin-only user management dashboard (requires admin role)
-- `/assistants` - Admin-only assistant management page (requires admin role)
-- Role-based UI: Admin users see additional navigation links for admin dashboard and assistant management
-- ProtectedRoute component ensures only authenticated users access protected pages
-
-**Styling System**: Tailwind CSS with CSS variables for theming, supporting light/dark modes. Custom design tokens defined in CSS variables include colors, shadows, typography scales, and spacing.
+- **Framework**: React 18 with TypeScript, using Vite.
+- **UI Component System**: shadcn/ui with Radix UI primitives and Tailwind CSS for styling, using the "new-york" style variant.
+- **State Management**: TanStack Query for server state, data fetching, and caching. No global client state management.
+- **Routing**: Wouter for client-side routing, with protected routes for authentication and role-based access.
+- **Styling**: Tailwind CSS with CSS variables for theming, supporting light/dark modes.
 
 ### Backend Architecture
-
-**Server Framework**: Express.js running on Node.js with TypeScript in ESM module format.
-
-**API Design**: RESTful API structure with the following endpoints:
-- **Authentication** (public): POST /api/auth/signup, POST /api/auth/login, POST /api/auth/logout, GET /api/auth/me
-- **User Management** (admin only): GET /api/users (list all users), PATCH /api/users/:userId/role (update user role)
-- **Assistant Management** (admin only): GET/POST/PUT/DELETE /api/assistants
-- **Per-Assistant File Management** (admin only): GET /api/assistants/:id/files (list assistant's files), POST /api/assistants/:id/files (upload file to assistant), DELETE /api/assistants/:id/files/:fileId (delete assistant's file)
-- **User-Assistant Access** (admin only): GET /api/users/:userId/assistants (list user's assistants), POST /api/users/:userId/assistant-access (grant access), DELETE /api/users/:userId/assistant-access/:assistantId (revoke access)
-- **User Assistant Access** (authenticated): GET /api/user/assistants (get current user's accessible assistants)
-- **Vector Store** (admin only): Status and management endpoints
-- **Chat Sessions** (authenticated): GET/POST/DELETE for user's own sessions with optional assistantId
-- **Chat Interface** (authenticated): Streaming and non-streaming message endpoints with session ownership verification and assistant selection
-- **Messages** (authenticated): GET for session history, DELETE for clearing with ownership checks
-
-**Development Architecture**: Vite middleware integration in development mode provides HMR (Hot Module Reload) and serves the React application. Production build uses static file serving.
-
-**File Upload**: Multer handles multipart form data for PDF uploads with 10MB file size limit and PDF-only filtering.
+- **Server Framework**: Express.js on Node.js with TypeScript (ESM).
+- **API Design**: RESTful API for authentication, user management, assistant management (including per-assistant file management and user-assistant access), vector store management, and chat interactions.
+- **Development Architecture**: Vite middleware for HMR in development; static file serving in production.
+- **File Upload**: Multer handles multipart form data for PDF uploads (10MB limit, PDF-only).
 
 ### Data Storage
-
-**Primary Database**: PostgreSQL accessed via Drizzle ORM with the Neon serverless driver for connection pooling and edge compatibility.
-
-**Database Schema**:
-- `users`: User authentication with username, password (hashed), role (admin/user), and createdAt timestamp
-- `assistants`: AI assistant configurations with name, description, instructions, model, OpenAI assistant ID, OpenAI vector store ID, and active status
-- `uploaded_files`: PDF file metadata with OpenAI file ID and vector store file ID, belongs to one assistant via non-null `assistantId` foreign key with CASCADE delete
-- `user_assistant_access`: Junction table controlling which users can access which assistants
-- `chat_sessions`: User-owned conversation sessions with userId, assistantId, and responseId for OpenAI Responses API conversation continuity
-- `chat_messages`: Conversation history with sessionId, role, content, and optional citation data stored as JSONB
-
-**Fallback Storage**: In-memory storage implementation (`MemStorage`) provides a development/testing alternative to PostgreSQL, storing all data in Map structures.
-
-**Authentication & Authorization**:
-- Passport.js with local strategy for username/password authentication
-- bcrypt for secure password hashing (10 rounds)
-- Express-session with MemoryStore (development) - requires Redis or similar for production
-- Authorization middleware: `requireAuth` and `requireAdmin` protect routes
-- Session ownership verification prevents users from accessing other users' sessions
-
-### External Dependencies
-
-**OpenAI Integration**: 
-- Responses API for chat conversations with file_search tool and citation-backed answers
-- Vector Store API for document indexing and semantic search per assistant
-- File Search tool for retrieval-augmented generation (RAG) with citation support
-- Conversation continuity via previous_response_id parameter (updated after each turn)
-- Assistant API used only for vector store management (create, add files)
-- File API for document upload and management
-- Lazy-loaded client initialization prevents startup errors when API key is not configured
-
-**Database**: 
-- Neon PostgreSQL (serverless) via `@neondatabase/serverless`
-- Drizzle ORM for type-safe database queries and migrations
-- Connection via `DATABASE_URL` environment variable
-
-**File Storage**: Local filesystem storage in `/uploads` directory for uploaded PDFs before OpenAI processing.
-
-**Build & Development Tools**:
-- Vite for frontend bundling and dev server
-- esbuild for backend bundling
-- Replit-specific plugins for development experience (cartographer, dev banner, runtime error overlay)
+- **Primary Database**: PostgreSQL via Drizzle ORM and Neon serverless driver.
+- **Database Schema**: Includes tables for users, assistants, uploaded files (one-to-many with assistants), user-assistant access, chat sessions, and chat messages (with JSONB for citations).
+- **Fallback Storage**: In-memory storage (`MemStorage`) for development/testing.
+- **Authentication & Authorization**: Passport.js with local strategy, bcrypt for password hashing, Express-session. Role-based access control (`admin`, `user`) with `requireAuth` and `requireAdmin` middleware.
 
 ### Key Architectural Decisions
-
-**PDF Processing Flow**:
-1. Admin uploads PDF directly to specific assistant via multipart form at `/api/assistants/:id/files`
-2. File stored locally and metadata saved to database with `assistantId` foreign key
-3. File uploaded to OpenAI File API
-4. Vector store created for assistant if it doesn't exist yet (lazy initialization)
-5. File added to assistant's dedicated Vector Store for indexing
-6. OpenAI vector store file ID stored in database for tracking
-7. Files are completely isolated per assistant - deleting assistant cascades to delete all its files
-
-**Multi-Assistant Chat Architecture**:
-- Users can select from multiple AI assistants based on admin-granted access permissions
-- Each assistant has custom instructions and isolated knowledge base via dedicated vector store
-- Chat sessions reference assistantId and store responseId for conversation continuity
-- Session ownership verified before any session operations (read/write/delete)
-- Uses OpenAI Responses API with `previous_response_id` for multi-turn conversations
-- Messages stored with sessionId, role (user/assistant/system), and optional citation metadata
-- Citations extracted from `response.output → contentItem.text.annotations` structure
-- Each assistant maintains its own Vector Store with attached files for specialized knowledge
-- Vector Store used for retrieval-augmented generation (RAG) via file_search tool
-- responseId updated after every turn to maintain conversation context
-- Assistant selector in UI allows users to choose which AI assistant to interact with
-
-**Type Safety Strategy**:
-- Shared TypeScript types between client and server via `/shared` directory
-- Drizzle-Zod integration generates Zod schemas from database schema for runtime validation
-- Path aliases (@, @shared, @assets) provide clean imports across the codebase
-
-**Separation of Concerns**:
-- `/client`: All frontend React code
-- `/server`: Backend Express server and services
-- `/shared`: Shared types and schemas
-- Services layer (`/server/services`) isolates external API interactions (OpenAI, file upload)
-
-**Environment Configuration**:
-- `DATABASE_URL`: PostgreSQL connection string (required)
-- `OPENAI_API_KEY`: OpenAI API authentication (required)
-- `SESSION_SECRET`: Express session secret key (required for production)
-- `NODE_ENV`: Environment mode (development/production)
+- **PDF Processing Flow**: Admins upload PDFs directly to specific assistants. Files are stored locally, uploaded to OpenAI File API, and added to the assistant's dedicated OpenAI Vector Store for indexing and RAG. Files are isolated per assistant.
+- **Multi-Assistant Chat Architecture**: Users select from accessible assistants. Each assistant has custom instructions, an isolated knowledge base via a dedicated vector store, and uses the OpenAI Responses API with `previous_response_id` for conversation continuity.
+- **Type Safety Strategy**: Shared TypeScript types, Drizzle-Zod for runtime validation, and path aliases.
+- **Separation of Concerns**: Clear division into `/client`, `/server`, and `/shared` directories.
+- **Environment Configuration**: Uses `DATABASE_URL`, `OPENAI_API_KEY`, `SESSION_SECRET`, and `NODE_ENV`.
 
 ### Security Architecture
+- **Role-Based Access Control**: `admin` for management, `user` for chat. New users default to `user`. Admin promotion via specific endpoint. User-assistant access controlled by junction table.
+- **Authentication Security**: bcrypt for password hashing, secure session secret, authenticated and admin-only route protection.
+- **Data Isolation**: Chat sessions isolated by `userId`. User-assistant access controlled. Each assistant has its own isolated knowledge base.
 
-**Role-Based Access Control**:
-- Two roles: `admin` (can create/manage assistants, upload PDFs, manage users) and `user` (chat access only)
-- New users always created with "user" role - no client-side privilege escalation possible
-- Admin promotion via admin-only endpoint: PATCH /api/users/:userId/role
-- User-assistant access control enforced via junction table - admins grant/revoke access per user per assistant
-- Only accessible assistants appear in user's assistant selector dropdown
+## External Dependencies
 
-**Authentication Security**:
-- Passwords hashed with bcrypt (10 rounds) before storage
-- Sessions use secure random SESSION_SECRET
-- requireAuth middleware protects all authenticated routes
-- requireAdmin middleware restricts admin-only operations
-
-**Data Isolation**:
-- Chat sessions isolated by userId - users cannot access other users' conversations
-- Session ownership verified on every session-related operation
-- User-assistant access controlled via permission table - users can only interact with assistants they have access to
-- Each assistant has its own isolated knowledge base (vector store) with dedicated file attachments
-- Admins can create isolated knowledge domains by setting up separate assistants
-
-**Production Considerations**:
-- Replace MemoryStore with Redis or similar for session storage before production deployment
-- Ensure SESSION_SECRET is cryptographically secure random string
-- Consider rate limiting on authentication endpoints
-- Monitor for brute force attacks on login
+- **OpenAI Integration**:
+    - Responses API for chat with `file_search` tool and citation-backed answers.
+    - Vector Store API for document indexing and semantic search per assistant.
+    - Assistant API (used only for vector store management).
+    - File API for document upload and management.
+- **Database**:
+    - Neon PostgreSQL via `@neondatabase/serverless`.
+    - Drizzle ORM for database interactions.
+- **File Storage**: Local filesystem (`/uploads` directory) for temporary PDF storage before OpenAI processing.
+- **Build & Development Tools**:
+    - Vite for frontend bundling and development server.
+    - esbuild for backend bundling.
+```

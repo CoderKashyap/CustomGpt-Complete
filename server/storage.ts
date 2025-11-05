@@ -25,6 +25,8 @@ import { randomUUID } from "crypto";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { eq, desc, and, isNull } from "drizzle-orm";
 import postgres from "postgres";
+import dotenv from 'dotenv';
+dotenv.config();
 
 export interface IStorage {
   // User methods
@@ -322,6 +324,7 @@ export class MemStorage implements IStorage {
       id,
       userId: insertSession.userId || null,
       assistantId: insertSession.assistantId || null,
+      responseId: insertSession.responseId ?? null,
       title: insertSession.title ?? "New Conversation",
       isTest: insertSession.isTest ?? 0,
       createdAt: now,

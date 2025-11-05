@@ -1,5 +1,7 @@
 import OpenAI from "openai";
 import type { Assistant } from "@shared/schema";
+import dotenv from 'dotenv';
+dotenv.config();
 
 let openaiClient: OpenAI | null = null;
 
