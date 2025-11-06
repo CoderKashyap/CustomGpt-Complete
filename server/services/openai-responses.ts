@@ -121,7 +121,14 @@ export async function createVectorStoreForAssistant(
   
   const vectorStore = await (client as any).beta.vectorStores.create({
     name: `Assistant ${assistantId} Knowledge Base`,
-    file_ids: fileIds
+    file_ids: fileIds,
+    chunking_strategy: {
+      type: "static",
+      static: {
+        max_chunk_size_tokens: 2000,
+        chunk_overlap_tokens: 400
+      }
+    }
   });
   
   return vectorStore.id;
@@ -134,7 +141,14 @@ export async function addFilesToVectorStore(
   const client = getOpenAIClient();
   
   await (client as any).beta.vectorStores.fileBatches.createAndPoll(vectorStoreId, {
-    file_ids: fileIds
+    file_ids: fileIds,
+    chunking_strategy: {
+      type: "static",
+      static: {
+        max_chunk_size_tokens: 2000,
+        chunk_overlap_tokens: 400
+      }
+    }
   });
 }
 

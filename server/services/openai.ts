@@ -12,7 +12,7 @@ if (!process.env.OPENAI_API_KEY) {
   console.warn("⚠️  OPENAI_API_KEY is not set. OpenAI features will not work.");
 }
 
-const openai = new OpenAI({ 
+const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || ""
 });
 
@@ -30,9 +30,16 @@ export interface VectorStoreInfo {
 
 export async function createVectorStore(name: string): Promise<VectorStoreInfo> {
   checkApiKey();
-  
+
   const store = await (openai as any).vectorStores.create({
     name,
+    chunking_strategy: {
+      type: "static",
+      static: {
+        max_chunk_size_tokens: 2000,
+        chunk_overlap_tokens: 400
+      }
+    }
   });
 
   return {
@@ -49,14 +56,23 @@ export async function uploadFileToVectorStore(
 ): Promise<string> {
   checkApiKey();
   const fileStream = fs.createReadStream(filePath);
-  
+
   const file = await openai.files.create({
     file: fileStream,
     purpose: "assistants",
   });
 
-  await (openai as any).vectorStores.files.create(vectorStoreId, {
-    file_id: file.id,
+  // await (openai as any).vectorStores.files.create(vectorStoreId, {
+  //   file_id: file.id,
+  await (openai as any).vectorStores.fileBatches.createAndPoll(vectorStoreId, {
+    file_ids: [file.id],
+    chunking_strategy: {
+      type: "static",
+      static: {
+        max_chunk_size_tokens: 2000,
+        chunk_overlap_tokens: 400
+      }
+    }
   });
 
   return file.id;
@@ -71,7 +87,7 @@ export async function deleteFileFromVectorStore(
   } catch (error) {
     console.error("Error deleting file from vector store:", error);
   }
-  
+
   try {
     await (openai.files as any).delete(fileId);
   } catch (error) {
@@ -354,7 +370,7 @@ export async function getChatResponseWithCitations(
 
   if (lastMessage.content[0].type === "text") {
     content = lastMessage.content[0].text.value;
-    
+
     if (lastMessage.content[0].text.annotations) {
       for (const annotation of lastMessage.content[0].text.annotations) {
         if (annotation.type === "file_citation") {
